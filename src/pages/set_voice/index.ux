@@ -12,16 +12,13 @@
       <input class="inp" type="text" value="{{cfg.asrUrl}}" @change="onAsrUrl" />
       <text class="lb">密钥</text>
       <input class="inp" type="text" value="{{cfg.asrKey}}" placeholder="sk-..." @change="onAsrKey" />
-
       <text class="sec">朗读</text>
       <text class="lb">URL 模板（{text} 会被替换）</text>
       <input class="inp" type="text" value="{{cfg.ttsUrl}}" @change="onTtsUrl" />
-
       <div class="presets">
         <text class="pill" @click="youdao">有道 免费</text>
-        <text class="pill-test" @click="test">试听</text>
+        <text class="pill-green" @click="test">试听</text>
       </div>
-
       <text class="st">{{status}}</text>
     </scroll>
   </div>
@@ -47,7 +44,7 @@ export default {
     this.status = '合成中…'
     speakText(this.cfg, '你好我是腕上AI')
       .then(() => { this.status = '正在播放' })
-      .catch((e) => { this.status = '失败：' + String(e).slice(0, 50) })
+      .catch((e) => { this.status = '失败：' + String(e).slice(0, 40) })
   },
   save() {
     saveConfig(this.cfg).then((ok) => {
@@ -62,26 +59,23 @@ export default {
 
 <style>
 .page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
-.bar {
-  flex-direction: row; justify-content: space-between; align-items: center;
-  height: 64px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
-}
-.title { color: #62d0ff; font-size: 28px; font-weight: bold; }
-.nav { color: #c9d6e2; font-size: 22px; width: 80px; }
-.nav-green { color: #ffffff; background-color: #238636; font-size: 20px;
-  width: 84px; height: 46px; line-height: 46px; text-align: center; border-radius: 23px; }
-
-.body { flex: 1; flex-direction: column; padding: 4px 56px 16px 56px; }
-.sec { color: #62d0ff; font-size: 22px; font-weight: bold; margin-top: 12px; }
-.lb { color: #8a94a0; font-size: 18px; margin-top: 8px; margin-bottom: 4px; }
-.inp { height: 54px; background-color: #1c2128; border-radius: 27px;
-  color: #e6edf3; font-size: 18px; padding-left: 18px; padding-right: 18px; }
-.presets { flex-direction: row; justify-content: center; margin-top: 14px; }
-.pill { background-color: #1f6feb; color: #ffffff; font-size: 18px;
-  height: 48px; line-height: 48px; text-align: center; border-radius: 24px;
-  width: 130px; margin: 0 5px; }
-.pill-test { background-color: #238636; color: #ffffff; font-size: 18px;
-  height: 48px; line-height: 48px; text-align: center; border-radius: 24px;
-  width: 96px; margin: 0 5px; }
-.st { color: #d29922; font-size: 18px; margin-top: 12px; text-align: center; }
+.bar { flex-direction: row; align-items: center; justify-content: space-between;
+       height: 56px; margin-top: 56px; padding-left: 88px; padding-right: 88px; }
+.title { color: #62d0ff; font-size: 26px; font-weight: bold; }
+.nav { color: #c9d6e2; font-size: 21px; width: 76px; }
+.nav-green { color: #ffffff; background-color: #238636; font-size: 19px;
+             width: 80px; height: 44px; line-height: 44px; text-align: center; border-radius: 22px; }
+.body { height: 280px; padding-left: 88px; padding-right: 88px; }
+.lb { color: #8a94a0; font-size: 18px; margin-top: 8px; margin-bottom: 3px; }
+.inp { height: 48px; background-color: #1c2128; border-radius: 24px;
+       color: #e6edf3; font-size: 18px; padding-left: 16px; padding-right: 16px; }
+.st { color: #d29922; font-size: 17px; margin-top: 8px; text-align: center; }
+.sec { color: #62d0ff; font-size: 20px; font-weight: bold; margin-top: 10px; }
+.presets { flex-direction: row; justify-content: center; margin-top: 10px; }
+.pill { background-color: #1f6feb; color: #ffffff; font-size: 17px;
+        height: 44px; line-height: 44px; text-align: center; border-radius: 22px;
+        width: 118px; margin: 0 4px; }
+.pill-green { background-color: #238636; color: #ffffff; font-size: 17px;
+              height: 44px; line-height: 44px; text-align: center; border-radius: 22px;
+              width: 88px; margin: 0 4px; }
 </style>

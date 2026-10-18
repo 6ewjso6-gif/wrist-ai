@@ -1,21 +1,19 @@
 <template>
   <div class="page">
     <div class="bar">
-      <text class="bar-btn" @click="back">返回</text>
-      <text class="bar-title">自检</text>
-      <text class="bar-btn-green" @click="runAll">重测</text>
+      <text class="nav" @click="back">返回</text>
+      <text class="title">自检</text>
+      <text class="nav-green" @click="runAll">重测</text>
     </div>
 
     <scroll class="body" scroll-y="true">
       <div class="item" for="{{checks}}">
         <div class="{{ $item.ok ? 'dot-ok' : 'dot-bad' }}"></div>
-        <div class="item-body">
-          <text class="item-name">{{ $item.name }}</text>
-          <text class="item-msg">{{ $item.msg }}</text>
+        <div class="ib">
+          <text class="in">{{ $item.name }}</text>
+          <text class="im">{{ $item.msg }}</text>
         </div>
       </div>
-
-      <text class="hint">把这一页截图发给开发者即可</text>
     </scroll>
   </div>
 </template>
@@ -23,62 +21,49 @@
 <script>
 import router from '@system.router'
 
-function mk(name) { return { name: name, ok: false, msg: '待检测' } }
+function mk(n) { return { name: n, ok: false, msg: '待检测' } }
 
 export default {
   private: { checks: [] },
 
   onInit() {
-    this.checks = [
-      mk('录音'), mk('上传'), mk('播放'), mk('下载'),
-      mk('振动'), mk('存储'), mk('网络'), mk('对话'), mk('朗读')
-    ]
+    this.checks = [mk('录音'), mk('上传'), mk('播放'), mk('下载'),
+                   mk('振动'), mk('存储'), mk('网络'), mk('对话'), mk('朗读')]
     this.runAll()
   },
 
   set(i, ok, msg) {
-    const arr = this.checks.slice()
-    arr[i] = { name: arr[i].name, ok: ok, msg: msg }
-    this.checks = arr
+    const a = this.checks.slice()
+    a[i] = { name: a[i].name, ok: ok, msg: msg }
+    this.checks = a
   },
 
   runAll() {
-    const mods = [
-      ['@system.record', 0], ['@system.uploadtask', 1], ['@system.audio', 2],
-      ['@system.request', 3], ['@system.vibrator', 4], ['@system.storage', 5]
-    ]
+    const mods = [['@system.record', 0], ['@system.uploadtask', 1], ['@system.audio', 2],
+                  ['@system.request', 3], ['@system.vibrator', 4], ['@system.storage', 5]]
     for (let k = 0; k < mods.length; k++) {
-      try {
-        const m = require(mods[k][0])
-        this.set(mods[k][1], !!m, m ? '可用' : '模块为空')
-      } catch (e) {
-        this.set(mods[k][1], false, '不可用')
-      }
+      try { this.set(mods[k][1], !!require(mods[k][0]), '可用') }
+      catch (e) { this.set(mods[k][1], false, '不可用') }
     }
-    this.checkNet()
-    this.loadCfg((cfg) => { this.checkChat(cfg); this.checkTts(cfg) })
-  },
-
-  checkNet() {
     try {
       require('@system.network').getType({
-        success: (r) => {
-          const t = r && r.type ? r.type : '未知'
-          this.set(6, t !== 'none', '类型：' + t)
-        },
+        success: (r) => { const t = (r && r.type) ? r.type : '?'; this.set(6, t !== 'none', t) },
         fail: () => this.set(6, false, '查询失败')
       })
-    } catch (e) { this.set(6, false, '接口不可用') }
-  },
+    } catch (e) { this.set(6, false, '不可用') }
 
-  loadCfg(cb) {
     try {
       require('@system.storage').get({
         key: 'aiConfig',
-        success: (r) => { try { cb(r && r.data ? JSON.parse(r.data) : null) } catch (e) { cb(null) } },
-        fail: () => cb(null)
+        success: (r) => {
+          let c = null
+          try { c = r && r.data ? JSON.parse(r.data) : null } catch (e) {}
+          this.checkChat(c)
+          this.checkTts(c)
+        },
+        fail: () => { this.set(7, false, '读不到配置'); this.set(8, false, '读不到配置') }
       })
-    } catch (e) { cb(null) }
+    } catch (e) { this.set(7, false, '不可用'); this.set(8, false, '不可用') }
   },
 
   checkChat(cfg) {
@@ -94,7 +79,7 @@ export default {
           let d = res.data
           if (typeof d === 'string') { try { d = JSON.parse(d) } catch (e) {} }
           if (d && d.choices) this.set(7, true, '正常')
-          else if (d && d.error) this.set(7, false, '报错：' + String(d.error.message || '').slice(0, 40))
+          else if (d && d.error) this.set(7, false, String(d.error.message || '').slice(0, 30))
           else this.set(7, false, '响应异常')
         },
         fail: (e, c) => this.set(7, false, '网络错误 ' + c)
@@ -103,16 +88,16 @@ export default {
   },
 
   checkTts(cfg) {
-    const url = (cfg && cfg.ttsUrl) ? cfg.ttsUrl : 'https://dict.youdao.com/dictvoice?type=2&audio={text}'
-    if (url.indexOf('{text}') < 0) { this.set(8, false, '模板缺 {text}'); return }
+    const u = (cfg && cfg.ttsUrl) ? cfg.ttsUrl : 'https://dict.youdao.com/dictvoice?type=2&audio={text}'
+    if (u.indexOf('{text}') < 0) { this.set(8, false, '模板缺 {text}'); return }
     this.set(8, false, '请求中…')
     try {
       require('@system.fetch').fetch({
-        url: url.replace(/\{text\}/g, encodeURIComponent('测试')),
+        url: u.replace(/\{text\}/g, encodeURIComponent('测试')),
         method: 'GET', responseType: 'json',
         success: (res) => {
-          const len = res.data ? String(res.data).length : 0
-          this.set(8, true, '可达，' + len + ' 字节')
+          const n = res.data ? String(res.data).length : 0
+          this.set(8, true, '可达 ' + n + ' 字节')
         },
         fail: (e, c) => this.set(8, false, '不可达 ' + c)
       })
@@ -125,40 +110,18 @@ export default {
 
 <style>
 .page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
+.bar { flex-direction: row; align-items: center; justify-content: space-between;
+       height: 56px; margin-top: 56px; padding-left: 88px; padding-right: 88px; }
+.title { color: #62d0ff; font-size: 26px; font-weight: bold; }
+.nav { color: #c9d6e2; font-size: 21px; width: 76px; }
+.nav-green { color: #ffffff; background-color: #238636; font-size: 19px;
+             width: 80px; height: 44px; line-height: 44px; text-align: center; border-radius: 22px; }
 
-.bar {
-  flex-direction: row; justify-content: space-between; align-items: center;
-  height: 72px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
-}
-.bar-title { color: #62d0ff; font-size: 30px; font-weight: bold; }
-.bar-btn {
-  color: #c9d6e2; background-color: #30363d;
-  font-size: 24px; width: 92px; height: 56px; line-height: 56px;
-  text-align: center; border-radius: 28px;
-}
-.bar-btn-green {
-  color: #ffffff; background-color: #238636;
-  font-size: 24px; width: 92px; height: 56px; line-height: 56px;
-  text-align: center; border-radius: 28px;
-}
-
-.body { flex: 1; flex-direction: column; padding: 4px 56px 16px 56px; }
-
-.item {
-  flex-direction: row; align-items: center;
-  margin-bottom: 16px;
-}
-.dot-ok {
-  width: 22px; height: 22px; border-radius: 11px;
-  background-color: #3fb950; margin-right: 14px;
-}
-.dot-bad {
-  width: 22px; height: 22px; border-radius: 11px;
-  background-color: #f85149; margin-right: 14px;
-}
-.item-body { flex-direction: column; flex: 1; }
-.item-name { color: #e6edf3; font-size: 27px; }
-.item-msg { color: #8a94a0; font-size: 21px; margin-top: 2px; }
-
-.hint { color: #d29922; font-size: 22px; line-height: 28px; margin-top: 20px; }
+.body { height: 280px; padding-left: 88px; padding-right: 88px; }
+.item { flex-direction: row; align-items: center; margin-bottom: 12px; }
+.dot-ok { width: 16px; height: 16px; border-radius: 8px; background-color: #3fb950; margin-right: 12px; }
+.dot-bad { width: 16px; height: 16px; border-radius: 8px; background-color: #f85149; margin-right: 12px; }
+.ib { flex-direction: column; }
+.in { color: #e6edf3; font-size: 21px; }
+.im { color: #8a94a0; font-size: 16px; }
 </style>

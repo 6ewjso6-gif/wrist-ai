@@ -1,31 +1,29 @@
 <template>
   <div class="page">
     <div class="bar">
-      <text class="back" @click="back">返回</text>
+      <text class="nav" @click="back">返回</text>
       <text class="title">设置</text>
-      <text class="spacer"></text>
+      <text class="gap"></text>
     </div>
 
     <div class="menu">
       <div class="row" @click="go('/pages/set_chat')">
-        <text class="row-t">对话模型</text>
-        <text class="row-s">{{chatState}}</text>
+        <text class="rt">对话模型</text>
+        <text class="rs">{{chatState}}</text>
       </div>
       <div class="row" @click="go('/pages/set_voice')">
-        <text class="row-t">语音</text>
-        <text class="row-s">{{voiceState}}</text>
+        <text class="rt">语音</text>
+        <text class="rs">{{voiceState}}</text>
       </div>
       <div class="row" @click="go('/pages/set_quick')">
-        <text class="row-t">快捷提问</text>
-        <text class="row-s">{{quickCount}} 条</text>
+        <text class="rt">快捷提问</text>
+        <text class="rs">{{quickCount}} 条</text>
       </div>
       <div class="row" @click="go('/pages/diag')">
-        <text class="row-t">自检</text>
-        <text class="row-s">检查各项能力</text>
+        <text class="rt">自检</text>
+        <text class="rs">各项能力检测</text>
       </div>
     </div>
-
-    <text class="tip">日常同步推荐用手机 App，手表上不用打字</text>
   </div>
 </template>
 
@@ -39,9 +37,7 @@ export default {
   onShow() {
     loadConfig().then((c) => {
       this.chatState = c.apiKey ? (c.model || '已配置') : '未配置'
-      const asr = c.asrKey ? '识别✓' : '识别✗'
-      const tts = c.ttsUrl ? '朗读✓' : '朗读✗'
-      this.voiceState = asr + ' ' + tts
+      this.voiceState = (c.asrKey ? '识别√' : '识别×') + ' ' + (c.ttsUrl ? '朗读√' : '朗读×')
       this.quickCount = (c.quickAsks || []).length
     })
   },
@@ -53,23 +49,16 @@ export default {
 
 <style>
 .page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
+.bar { flex-direction: row; align-items: center; justify-content: space-between;
+       height: 56px; margin-top: 56px; padding-left: 88px; padding-right: 88px; }
+.title { color: #62d0ff; font-size: 26px; font-weight: bold; }
+.nav { color: #c9d6e2; font-size: 21px; width: 76px; }
+.gap { width: 76px; }
 
-.bar {
-  flex-direction: row; justify-content: space-between; align-items: center;
-  height: 64px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
-}
-.title { color: #62d0ff; font-size: 28px; font-weight: bold; }
-.back { color: #c9d6e2; font-size: 22px; width: 80px; }
-.spacer { width: 80px; }
-
-.menu { flex: 1; flex-direction: column; padding: 10px 56px; }
-.row {
-  flex-direction: column; justify-content: center;
-  height: 76px; background-color: #1c2128;
-  border-radius: 20px; margin-bottom: 12px; padding-left: 22px;
-}
-.row-t { color: #e6edf3; font-size: 24px; }
-.row-s { color: #8a94a0; font-size: 18px; margin-top: 2px; }
-
-.tip { color: #8a94a0; font-size: 18px; text-align: center; padding: 0 50px 16px 50px; }
+.menu { height: 280px; padding-left: 88px; padding-right: 88px; padding-top: 4px; }
+.row { flex-direction: column; justify-content: center;
+       height: 64px; background-color: #1c2128; border-radius: 18px;
+       margin-bottom: 9px; padding-left: 20px; }
+.rt { color: #e6edf3; font-size: 22px; }
+.rs { color: #8a94a0; font-size: 16px; margin-top: 1px; }
 </style>

@@ -1,13 +1,11 @@
 <template>
   <div class="page">
-    <!-- 顶部：大按钮 -->
     <div class="bar">
       <text class="persona" @click="cyclePrompt">{{promptName}}</text>
       <text class="bar-btn" @click="goDiag">诊</text>
       <text class="bar-btn" @click="goSettings">设</text>
     </div>
 
-    <!-- 消息区 -->
     <scroll class="msgs" scroll-y="true" id="msgScroll">
       <div class="chips" if="{{messages.length === 0}}">
         <text class="chips-title">点一下直接问</text>
@@ -28,7 +26,6 @@
       <div class="tip" if="{{hint}}"><text class="tip-text">{{hint}}</text></div>
     </scroll>
 
-    <!-- 底部：麦克风 + 输入 + 发送 -->
     <div class="inputbar">
       <text class="mic {{recording ? 'mic-on' : ''}}" @click="tapMic">{{recording ? '停' : '说'}}</text>
       <input class="inp" type="text" value="{{draft}}" placeholder="输入…" @change="onDraft" />
@@ -44,16 +41,9 @@ import { askAI, recordVoice, stopVoice, transcribe, speakText, stopSpeak, buzz }
 
 export default {
   private: {
-    messages: [],
-    draft: '',
-    loading: false,
-    sending: false,
-    recording: false,
-    loadingText: '思考中',
-    hint: '',
-    promptName: '极简',
-    quickAsks: QUICK_ASKS,
-    cfg: null
+    messages: [], draft: '', loading: false, sending: false, recording: false,
+    loadingText: '思考中', hint: '', promptName: '极简',
+    quickAsks: QUICK_ASKS, cfg: null
   },
 
   onInit() { loadConfig().then((c) => this.applyCfg(c)) },
@@ -65,7 +55,7 @@ export default {
     const sets = getPromptSets()
     const s = sets.filter((x) => x.id === c.promptSetId)[0]
     this.promptName = c.customPrompt ? '自定义' : (s ? s.name : '极简')
-    if (!c.apiKey) this.hint = '还没填密钥，点右上角「设」'
+    if (!c.apiKey) this.hint = '还没填密钥，点「设」'
   },
 
   cyclePrompt() {
@@ -103,7 +93,7 @@ export default {
     }).catch((err) => {
       this.recording = false
       this.loading = false
-      this.hint = String(err).slice(0, 90)
+      this.hint = String(err).slice(0, 80)
     })
   },
 
@@ -114,7 +104,7 @@ export default {
     this.hint = '合成中…'
     speakText(this.cfg, item.content)
       .then(() => { this.hint = '播放中' })
-      .catch((err) => { this.hint = String(err).slice(0, 90) })
+      .catch((err) => { this.hint = String(err).slice(0, 80) })
   },
 
   onDraft(e) { this.draft = e.value },
@@ -144,7 +134,7 @@ export default {
       buzz(true)
       this.scrollBottom()
     }).catch((err) => {
-      this.hint = String(err).slice(0, 100)
+      this.hint = String(err).slice(0, 90)
       this.loading = false
       this.sending = false
     })
@@ -162,65 +152,43 @@ export default {
 <style>
 .page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
 
-/* 顶栏：高 64，按钮 64x64 */
-.bar {
-  flex-direction: row; justify-content: center; align-items: center;
-  height: 64px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
-}
-.persona {
-  color: #0b0f14; background-color: #62d0ff;
-  font-size: 26px; font-weight: bold;
-  padding: 8px 24px; border-radius: 22px;
-}
-.bar-btn {
-  color: #0b0f14; background-color: #30363d;
-  font-size: 26px; width: 60px; height: 60px; line-height: 60px;
-  text-align: center; border-radius: 30px; margin-left: 12px;
-}
+/* 顶栏 y 40~100 */
+.bar { flex-direction: row; align-items: center; justify-content: center;
+       height: 56px; margin-top: 56px; padding-left: 88px; padding-right: 88px; }
+.persona { color: #0b0f14; background-color: #62d0ff; font-size: 22px; font-weight: bold;
+           padding: 6px 20px; border-radius: 20px; }
+.bar-btn { color: #0b0f14; background-color: #30363d; font-size: 22px;
+           width: 52px; height: 52px; line-height: 52px; text-align: center;
+           border-radius: 26px; margin-left: 10px; }
 
-/* 消息区 */
-.msgs { flex: 1; flex-direction: column; padding: 8px 28px; }
+/* 消息区 y 104~292 */
+.msgs { height: 176px; padding-left: 72px; padding-right: 72px; }
 
-.chips { flex-direction: column; padding: 4px 0; }
-.chips-title { color: #8a94a0; font-size: 24px; margin-bottom: 12px; text-align: center; }
-.chip {
-  background-color: #1c2128; border-radius: 18px;
-  color: #c9d6e2; font-size: 24px;
-  padding: 14px 18px; margin-bottom: 12px; text-align: center;
-}
+.chips { flex-direction: column; padding-top: 2px; }
+.chips-title { color: #8a94a0; font-size: 20px; margin-bottom: 8px; text-align: center; }
+.chip { background-color: #1c2128; border-radius: 16px; color: #c9d6e2;
+        font-size: 20px; padding: 10px 14px; margin-bottom: 8px; text-align: center; }
 
-.msg { flex-direction: column; margin-bottom: 14px; }
-.bubble-user {
-  align-self: flex-end; background-color: #1f6feb;
-  border-radius: 18px; padding: 14px 18px; max-width: 320px;
-}
-.bubble-ai {
-  align-self: flex-start; background-color: #1c2128;
-  border-radius: 18px; padding: 14px 18px; max-width: 340px;
-}
-.bubble-text { color: #e6edf3; font-size: 27px; line-height: 36px; }
+.msg { flex-direction: column; margin-bottom: 10px; }
+.bubble-user { align-self: flex-end; background-color: #1f6feb; border-radius: 16px;
+               padding: 10px 14px; max-width: 300px; }
+.bubble-ai { align-self: flex-start; background-color: #1c2128; border-radius: 16px;
+             padding: 10px 14px; max-width: 320px; }
+.bubble-text { color: #e6edf3; font-size: 23px; line-height: 31px; }
 
-.tip { padding: 6px; }
-.tip-text { color: #d29922; font-size: 23px; line-height: 30px; }
+.tip { padding: 4px; }
+.tip-text { color: #d29922; font-size: 20px; line-height: 26px; }
 
-/* 输入区：高 80，控件 68 */
-.inputbar {
-  flex-direction: row; align-items: center; justify-content: center;
-  height: 80px; padding-left: 34px; padding-right: 34px; margin-bottom: 8px;
-}
-.mic {
-  width: 68px; height: 68px; line-height: 68px; border-radius: 34px;
-  background-color: #1c2128; color: #8a94a0;
-  font-size: 24px; text-align: center; margin-right: 8px;
-}
+/* 输入区 y 296~376（关键：必须在这个高度内，否则圆边裁掉） */
+.inputbar { flex-direction: row; align-items: center; justify-content: center;
+            height: 80px; padding-left: 88px; padding-right: 88px; }
+.mic { width: 64px; height: 64px; line-height: 64px; border-radius: 32px;
+       background-color: #1c2128; color: #8a94a0; font-size: 22px;
+       text-align: center; margin-right: 8px; }
 .mic-on { background-color: #b62324; color: #ffffff; }
-.inp {
-  flex: 1; height: 68px; background-color: #1c2128; border-radius: 34px;
-  color: #e6edf3; font-size: 26px; padding-left: 20px; padding-right: 20px;
-}
-.send {
-  width: 68px; height: 68px; line-height: 68px; margin-left: 8px;
-  background-color: #238636; border-radius: 34px;
-  color: #ffffff; font-size: 26px; text-align: center;
-}
+.inp { flex: 1; height: 64px; background-color: #1c2128; border-radius: 32px;
+       color: #e6edf3; font-size: 23px; padding-left: 18px; padding-right: 18px; }
+.send { width: 64px; height: 64px; line-height: 64px; margin-left: 8px;
+        background-color: #238636; border-radius: 32px;
+        color: #ffffff; font-size: 24px; text-align: center; }
 </style>
