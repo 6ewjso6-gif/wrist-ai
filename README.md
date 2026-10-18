@@ -37,7 +37,7 @@
 
 ### 2. 侧载应用
 
-把 `dist/wrist-ai-v1.1.0-S5.rpk` 传到手机 → AstroBox → 本地安装 → 选择该文件。
+从 [Releases](https://github.com/6ewjso6-gif/wrist-ai/releases) 下载 `wrist-ai-v1.1.0-S5.rpk` → 传到手机 → AstroBox → 本地安装 → 选择该文件。
 
 > 本地侧载不看 AstroBox 资源库里的设备代号（`o65`/`o65m` 那套是给在线分发用的）。
 
