@@ -28,11 +28,11 @@ const DEFAULTS = {
   asrKey: '',
   asrModel: 'whisper-1',
   asrEnabled: true,
-  // 语音朗读（TTS）
-  ttsUrl: '',
+  // 语音朗读（TTS）—— 必须是 GET 式 URL 模板，{text} 会被替换
+  ttsUrl: 'https://dict.youdao.com/dictvoice?type=2&audio={text}',
   ttsKey: '',
-  ttsModel: 'tts-1',
-  ttsVoice: 'alloy',
+  ttsModel: '',
+  ttsVoice: '',
   // 快捷提问
   quickAsks: QUICK_ASKS
 }

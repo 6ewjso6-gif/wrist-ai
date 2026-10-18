@@ -1,8 +1,8 @@
 {
   "package": "com.wrist.ai.chat",
   "name": "腕上AI",
-  "versionName": "1.1.0",
-  "versionCode": 110,
+  "versionName": "2.0.0",
+  "versionCode": 200,
   "minPlatformVersion": 1200,
   "icon": "/common/logo.png",
   "deviceTypeList": [
@@ -51,6 +51,9 @@
         "component": "index"
       },
       "pages/settings": {
+        "component": "index"
+      },
+      "pages/diag": {
         "component": "index"
       }
     }

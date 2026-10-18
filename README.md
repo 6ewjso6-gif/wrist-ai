@@ -19,6 +19,7 @@
 - ⚙️ **表上直接配置** —— 不用改代码重新打包
 - 🎯 **圆屏适配** —— 480×480 圆形 AMOLED 安全区布局
 - 💬 **多轮上下文** —— 自动带最近 6 轮
+- 🩺 **内置自检页** —— 一键检测录音/上传/播放/网络/接口，红了截图就能定位问题
 
 ## 支持的设备
 
@@ -37,7 +38,7 @@
 
 ### 2. 侧载应用
 
-从 [Releases](https://github.com/6ewjso6-gif/wrist-ai/releases) 下载 `wrist-ai-v1.1.0-S5.rpk` → 传到手机 → AstroBox → 本地安装 → 选择该文件。
+从 [Releases](https://github.com/6ewjso6-gif/wrist-ai/releases) 下载 `wrist-ai-v2.0.0-S5.rpk` → 传到手机 → AstroBox → 本地安装 → 选择该文件。
 
 > 本地侧载不看 AstroBox 资源库里的设备代号（`o65`/`o65m` 那套是给在线分发用的）。
 
@@ -54,15 +55,46 @@
 
 ### 4. 语音功能（可选）
 
-语音输入和朗读都需要额外配接口，不配也不影响文字聊天。
+语音输入和朗读需要额外配接口，**不配也不影响文字聊天**。
 
-| 能力 | 推荐接口 | 说明 |
-|---|---|---|
-| 语音识别 | `https://api.openai.com/v1/audio/transcriptions` | 模型 `whisper-1`，也支持 Groq / 硅基流动等 Whisper 兼容服务 |
-| 朗读 TTS | `https://api.openai.com/v1/audio/speech` | 模型 `tts-1`，音色 `alloy` / `nova` / `shimmer` |
+#### 语音识别（录音转文字）
 
-> 注意：Vela 快应用**没有内置的语音识别和 TTS API**，必须走云端接口。
-> 录音/上传/播放这三个底层能力只有 **Xiaomi Watch S5** 全部支持，其他机型请自测。
+| 项 | 值 |
+|---|---|
+| 接口 | `https://api.openai.com/v1/audio/transcriptions` |
+| 模型 | `whisper-1` |
+| 密钥 | OpenAI key（Groq / 硅基流动的 Whisper 兼容接口也行） |
+
+#### 朗读（TTS）
+
+> ⚠️ `@system.request` 的 download **只支持 GET**，不能 POST。
+> 所以朗读地址必须写成 **URL 模板**，`{text}` 会替换成正文，`{key}` 替换成密钥。
+
+**默认（有道，免费无需 key）—— 已实测返回有效 MP3：**
+
+```
+https://dict.youdao.com/dictvoice?type=2&audio={text}
+```
+
+**百度（需要 access_token）：**
+
+```
+https://tsn.baidu.com/text2audio?tex={text}&tok={key}&cuid=wristai&ctp=1&lan=zh
+```
+
+设置页里有「试听一句话」按钮，直接验证配好没有。
+
+### 5. 自检
+
+首页右上角 🩺 打开自检页，会逐项检测：
+
+```
+● 录音 record        ● 上传 uploadtask    ● 音频播放 audio
+● 下载 request       ● 振动 vibrator       ● 数据存储 storage
+● 网络状态           ● 对话接口            ● 朗读接口
+```
+
+绿色=可用，红色=不可用并显示原因。**装完先跑这个，出问题截图即可。**
 
 ## 自己构建
 

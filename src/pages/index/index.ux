@@ -4,6 +4,7 @@
     <div class="bar">
       <text class="persona" @click="cyclePrompt">{{promptName}}</text>
       <text class="bar-btn" @click="goSettings">⚙</text>
+      <text class="bar-btn" @click="goDiag">🩺</text>
       <text class="bar-btn" @click="clearChat">✕</text>
     </div>
 
@@ -151,6 +152,8 @@ export default {
   /* ---- 聊天 ---- */
   onDraft(e) { this.draft = e.value },
   goSettings() { router.push({ uri: '/pages/settings' }) },
+
+  goDiag() { router.push({ uri: '/pages/diag' }) },
   clearChat() { this.messages = []; this.hint = ''; stopSpeak() },
 
   send() {
