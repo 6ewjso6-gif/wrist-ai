@@ -72,3 +72,29 @@ Android 11+ 有包可见性限制，不声明就**绑定不到小米运动健康
 
 - `libs/xms-wearable.jar` —— 从小米官方 demo 的 `xms-wearable-lib_1.4_release.aar` 提取
 - 官方 demo：`https://cdn.cnbj3-fusion.fds.api.mi-img.com/quickapp-vela/interconnect_dev_test_demo.zip`
+
+---
+
+## 错误码对照（排错必备）
+
+SDK 把服务端状态映射成异常，`ExceptionUtil` 反编译结果：
+
+| Status | 异常 | 含义 |
+|---|---|---|
+| `RESULT_DISCONNECTED` | `DeviceDisconnectedException` | 设备断开 |
+| `RESULT_PERMISSION_DENIED` | `PermissionDeniedException` | **权限未授予** |
+| `RESULT_PACKAGE_NOT_INSTALLED` | `AppNotInstalledException` | 手表上没装对应快应用 |
+| `RESULT_SIGNATURE_VERIFY_FAILED` | `SignatureVerifyFailedException` | 包名/签名不一致 |
+
+**看到 `PermissionDeniedException` 说明签名和包名都是对的**，
+只是还没在手表上授权。发送前必须先走：
+
+```java
+AuthApi auth = Wearable.getAuthApi(ctx);
+auth.checkPermissions(nodeId, new Permission[]{ Permission.DEVICE_MANAGER, Permission.NOTIFY })
+    .addOnSuccessListener(...)   // 返回 boolean[]
+```
+
+没授权就调 `requestPermission(...)`，**手表会弹授权框**，用户点允许后再 `sendMessage`。
+
+权限真实名称：`Permission.DEVICE_MANAGER` = `"data_manager"`，`Permission.NOTIFY` = `"notify"`。

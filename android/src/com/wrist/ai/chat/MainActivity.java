@@ -17,6 +17,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.xiaomi.xms.wearable.Wearable;
+import com.xiaomi.xms.wearable.auth.AuthApi;
+import com.xiaomi.xms.wearable.auth.Permission;
 import com.xiaomi.xms.wearable.message.MessageApi;
 import com.xiaomi.xms.wearable.node.Node;
 import com.xiaomi.xms.wearable.node.NodeApi;
@@ -340,6 +342,54 @@ public class MainActivity extends Activity implements View.OnClickListener {
             status.setText("还没有可用的手表连接，先点「重新查找手表」");
             return;
         }
+        status.setText("检查权限中…");
+        try {
+            AuthApi auth = Wearable.getAuthApi(this);
+            auth.checkPermissions(nodeId, new Permission[]{ Permission.DEVICE_MANAGER, Permission.NOTIFY })
+                .addOnSuccessListener(new PermCheckListener(this))
+                .addOnFailureListener(new PermFailListener(this));
+        } catch (Throwable t) {
+            status.setText("检查权限出错：" + t);
+        }
+    }
+
+    // 权限检查回调
+    void onPermChecked(Object result) {
+        boolean all = true;
+        try {
+            boolean[] arr = (boolean[]) result;
+            for (int i = 0; i < arr.length; i++) if (!arr[i]) all = false;
+        } catch (Throwable t) { all = false; }
+
+        if (all) {
+            status.setText("权限已授予，发送中…");
+            doSendNow();
+            return;
+        }
+        status.setText("请在手表上点「允许」，等待授权…");
+        try {
+            Wearable.getAuthApi(this)
+                .requestPermission(nodeId, Permission.DEVICE_MANAGER, Permission.NOTIFY)
+                .addOnSuccessListener(new PermReqListener(this))
+                .addOnFailureListener(new PermFailListener(this));
+        } catch (Throwable t) {
+            status.setText("请求权限出错：" + t);
+        }
+    }
+
+    // 授权成功回调
+    void onPermGranted() {
+        status.setText("已授权，发送中…");
+        doSendNow();
+    }
+
+    // 权限相关失败：不放弃，仍然尝试发送一次
+    void onPermFail(Object err) {
+        status.setText("权限请求失败（" + err + "），仍尝试发送…");
+        doSendNow();
+    }
+
+    private void doSendNow() {
         try {
             JSONObject o = new JSONObject();
             o.put("t", "cfg");
@@ -365,7 +415,25 @@ public class MainActivity extends Activity implements View.OnClickListener {
                     .addOnSuccessListener(new SendListener(this))
                     .addOnFailureListener(new FailListener(this, "发送"));
         } catch (Throwable t) {
-            status.setText("出错：" + t);
+            status.setText("发送出错：" + t);
         }
     }
-}
+
+    // ===== 回调类（命名内部类 + 原始类型，绕开 d8 的 NPE）=====
+    private static class PermCheckListener implements OnSuccessListener {
+        private final MainActivity a;
+        PermCheckListener(MainActivity x) { a = x; }
+        public void onSuccess(Object r) { a.onPermChecked(r); }
+    }
+
+    private static class PermReqListener implements OnSuccessListener {
+        private final MainActivity a;
+        PermReqListener(MainActivity x) { a = x; }
+        public void onSuccess(Object r) { a.onPermGranted(); }
+    }
+
+    private static class PermFailListener implements OnFailureListener {
+        private final MainActivity a;
+        PermFailListener(MainActivity x) { a = x; }
+        public void onFailure(Exception e) { a.onPermFail(e.getMessage()); }
+    }}
