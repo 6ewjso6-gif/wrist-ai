@@ -1,0 +1,98 @@
+<template>
+  <div class="page">
+    <div class="bar">
+      <text class="bar-btn" @click="back">←</text>
+      <text class="bar-title">设置</text>
+      <text class="bar-btn" @click="save">保存</text>
+    </div>
+
+    <scroll class="body" scroll-y="true">
+      <text class="label">API 地址</text>
+      <input class="inp" type="text" value="{{cfg.apiUrl}}" placeholder="https://.../chat/completions" @change="onUrl"></input>
+
+      <text class="label">API 密钥</text>
+      <input class="inp" type="text" value="{{cfg.apiKey}}" placeholder="sk-..." @change="onKey"></input>
+
+      <text class="label">模型名</text>
+      <input class="inp" type="text" value="{{cfg.model}}" placeholder="deepseek-chat" @change="onModel"></input>
+
+      <text class="label">系统提示词</text>
+      <input class="inp tall" type="text" value="{{cfg.systemPrompt}}" @change="onSys"></input>
+
+      <text class="hint">{{status}}</text>
+      <text class="hint">S5 46mm eSIM 请确认已开通蜂窝网络或连上 WiFi</text>
+      <text class="preset" @click="usePreset('deepseek')">用 DeepSeek 默认值</text>
+      <text class="preset" @click="usePreset('qwen')">用通义千问默认值</text>
+      <text class="preset" @click="usePreset('moonshot')">用 Kimi 默认值</text>
+    </scroll>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import prompt from '@system.prompt'
+import { loadConfig, saveConfig, DEFAULTS } from '../../common/config.js'
+
+const PRESETS = {
+  deepseek: { apiUrl: 'https://api.deepseek.com/chat/completions', model: 'deepseek-chat' },
+  qwen: { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: 'qwen-plus' },
+  moonshot: { apiUrl: 'https://api.moonshot.cn/v1/chat/completions', model: 'moonshot-v1-8k' }
+}
+
+export default {
+  private: {
+    cfg: { apiUrl: '', apiKey: '', model: '', systemPrompt: '' },
+    status: ''
+  },
+
+  onInit() {
+    loadConfig().then((c) => { this.cfg = c })
+  },
+
+  onUrl(e) { this.cfg.apiUrl = e.value },
+  onKey(e) { this.cfg.apiKey = e.value },
+  onModel(e) { this.cfg.model = e.value },
+  onSys(e) { this.cfg.systemPrompt = e.value },
+
+  usePreset(name) {
+    const p = PRESETS[name]
+    if (!p) return
+    this.cfg.apiUrl = p.apiUrl
+    this.cfg.model = p.model
+    this.status = '已填入 ' + name + ' 的地址和模型'
+  },
+
+  save() {
+    saveConfig(this.cfg).then((ok) => {
+      this.status = ok ? '✅ 已保存' : '❌ 保存失败'
+      prompt.showToast({ message: ok ? '已保存' : '保存失败', duration: 1200 })
+      if (ok) setTimeout(() => router.back(), 600)
+    })
+  },
+
+  back() { router.back() }
+}
+</script>
+
+<style>
+.page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
+.bar {
+  flex-direction: row; justify-content: space-between; align-items: center;
+  height: 44px; padding-left: 64px; padding-right: 64px; background-color: transparent;
+}
+.bar-title { color: #62d0ff; font-size: 24px; font-weight: bold; }
+.bar-btn { color: #62d0ff; font-size: 24px; }
+
+.body { flex: 1; flex-direction: column; padding: 6px 40px; }
+.label { color: #8a94a0; font-size: 18px; margin-top: 8px; margin-bottom: 3px; }
+.inp {
+  height: 40px; background-color: #1c2128; border-radius: 20px;
+  color: #e6edf3; font-size: 18px; padding-left: 12px; padding-right: 12px;
+}
+.tall { height: 62px; border-radius: 14px; }
+.hint { color: #d29922; font-size: 20px; margin-top: 10px; }
+.preset {
+  color: #58a6ff; font-size: 20px; margin-top: 10px;
+  padding: 6px 0;
+}
+</style>

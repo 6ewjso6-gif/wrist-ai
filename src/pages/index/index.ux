@@ -1,0 +1,174 @@
+<template>
+  <div class="page">
+    <!-- 顶部状态 -->
+    <div class="bar">
+      <text class="bar-title">腕上AI</text>
+      <text class="bar-btn" @click="goSettings">⚙</text>
+      <text class="bar-btn" @click="clearChat">✕</text>
+    </div>
+
+    <!-- 消息列表 -->
+    <scroll class="msgs" scroll-y="true" id="msgScroll">
+      <div class="msg" for="{{messages}}">
+        <div class="{{ $item.role === 'user' ? 'bubble-user' : 'bubble-ai' }}">
+          <text class="bubble-text">{{ $item.content }}</text>
+        </div>
+      </div>
+      <div class="msg" if="{{loading}}">
+        <div class="bubble-ai"><text class="bubble-text">思考中…</text></div>
+      </div>
+      <div class="tip" if="{{hint}}"><text class="tip-text">{{hint}}</text></div>
+    </scroll>
+
+    <!-- 输入区 -->
+    <div class="inputbar">
+      <input class="inp" type="text" value="{{draft}}" placeholder="问点什么…" @change="onDraft" />
+      <text class="send {{sending ? 'send-off' : ''}}" @click="send">发送</text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import { loadConfig } from '../../common/config.js'
+import { askAI } from '../../common/api.js'
+
+export default {
+  private: {
+    messages: [],
+    draft: '',
+    loading: false,
+    sending: false,
+    hint: '',
+    cfg: null
+  },
+
+  onInit() {
+    console.log('### wristAI onInit')
+    loadConfig().then((c) => {
+      this.cfg = c
+      if (!c.apiKey) this.hint = '还没配置密钥，点右上角 ⚙ 去设置'
+      else this.hint = ''
+    })
+  },
+
+  onShow() {
+    // 从设置页回来时刷新配置
+    if (this.cfg === null) return
+    loadConfig().then((c) => {
+      this.cfg = c
+      this.hint = c.apiKey ? '' : '还没配置密钥，点右上角 ⚙ 去设置'
+    })
+  },
+
+  onDraft(e) { this.draft = e.value },
+
+  goSettings() { router.push({ uri: '/pages/settings' }) },
+
+  clearChat() { this.messages = []; this.hint = '' },
+
+  send() {
+    const text = (this.draft || '').trim()
+    if (!text) { this.hint = '先说点什么'; return }
+    if (this.sending) return
+    if (!this.cfg || !this.cfg.apiKey) { this.hint = '请先去设置 API 密钥'; return }
+
+    this.hint = ''
+    this.sending = true
+    this.loading = true
+    this.messages = this.messages.concat([{ role: 'user', content: text }])
+    this.draft = ''
+
+    // 只带上最近 6 轮，省 token
+    const history = this.messages.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-6)
+
+    askAI(this.cfg, history).then((reply) => {
+      this.messages = this.messages.concat([{ role: 'assistant', content: reply }])
+      this.loading = false
+      this.sending = false
+      this.scrollBottom()
+    }).catch((err) => {
+      this.hint = String(err).slice(0, 120)
+      this.loading = false
+      this.sending = false
+    })
+  },
+
+  scrollBottom() {
+    try {
+      const el = this.$element('msgScroll')
+      if (el) el.scrollTo({ top: 999999, behavior: 'smooth' })
+    } catch (e) {}
+  }
+}
+</script>
+
+<style>
+.page {
+  flex-direction: column;
+  width: 100%; height: 100%;
+  background-color: #000000;
+}
+.bar {
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  height: 44px;
+  padding-left: 70px;
+  padding-right: 70px;
+  background-color: transparent;
+}
+.bar-title { color: #62d0ff; font-size: 22px; font-weight: bold; }
+.bar-btn { color: #8a94a0; font-size: 24px; margin-left: 18px; }
+
+.msgs { flex: 1; flex-direction: column; padding: 6px 34px; }
+.msg { flex-direction: column; margin-bottom: 10px; }
+.bubble-user {
+  align-self: flex-end;
+  background-color: #1f6feb;
+  border-radius: 12px;
+  padding: 8px 12px;
+  max-width: 300px;
+}
+.bubble-ai {
+  align-self: flex-start;
+  background-color: #1c2128;
+  border-radius: 12px;
+  padding: 8px 12px;
+  max-width: 320px;
+}
+.bubble-text { color: #e6edf3; font-size: 24px; line-height: 30px; }
+
+.tip { padding: 6px 4px; }
+.tip-text { color: #d29922; font-size: 20px; }
+
+.inputbar {
+  flex-direction: row;
+  align-items: center;
+  height: 56px;
+  padding-left: 62px;
+  padding-right: 62px;
+  background-color: transparent;
+}
+.inp {
+  flex: 1;
+  height: 42px;
+  background-color: #1c2128;
+  border-radius: 21px;
+  color: #e6edf3;
+  font-size: 20px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+.send {
+  width: 68px;
+  height: 42px;
+  margin-left: 8px;
+  background-color: #238636;
+  border-radius: 21px;
+  color: #ffffff;
+  font-size: 20px;
+  text-align: center;
+}
+.send-off { background-color: #30363d; color: #8a94a0; }
+</style>

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+# 签名私钥绝不入库
+sign/release/private.pem
+sign/privatekey
+!release/
