@@ -7,3 +7,4 @@ build/
 sign/release/private.pem
 sign/privatekey
 !release/
+wristai.p12

@@ -1,10 +1,106 @@
 <script>
+import prompt from '@system.prompt'
+import { DEFAULTS } from './common/config.js'
+
 export default {
-  onCreate() {
-    console.log('app created')
+  private: {
+    connect: null
   },
+
+  onCreate() {
+    console.log('[wristAI] app created')
+    this.setupInterconnect()
+  },
+
+  setupInterconnect() {
+    let interconnect
+    try {
+      interconnect = require('@system.interconnect')
+    } catch (e) {
+      console.log('[wristAI] interconnect 不可用：' + e)
+      return
+    }
+
+    try {
+      const connect = interconnect.instance()
+      this.connect = connect
+
+      connect.onopen = (d) => {
+        console.log('[wristAI] interconnect opened, reconnect=' + (d && d.isReconnected))
+      }
+
+      connect.onerror = (d) => {
+        console.log('[wristAI] interconnect error: ' + (d && d.code) + ' ' + (d && d.data))
+      }
+
+      connect.onclose = (d) => {
+        console.log('[wristAI] interconnect closed: ' + (d && d.code))
+      }
+
+      // 核心：接收手机设置器推来的配置
+      connect.onmessage = (msg) => {
+        try {
+          const raw = (msg && msg.data) ? msg.data : msg
+          const text = typeof raw === 'string' ? raw : JSON.stringify(raw)
+          console.log('[wristAI] 收到配置: ' + text.length + ' 字符')
+
+          let cfg = null
+          try { cfg = JSON.parse(text) } catch (e) {
+            console.log('[wristAI] 不是 JSON，忽略')
+            return
+          }
+          if (!cfg || cfg.t !== 'cfg') {
+            console.log('[wristAI] 不是配置消息，忽略')
+            return
+          }
+
+          // 合并到已有配置
+          const storage = require('@system.storage')
+          storage.get({
+            key: 'aiConfig',
+            success: (res) => {
+              let cur = {}
+              if (res && res.data) { try { cur = JSON.parse(res.data) } catch (e) { cur = {} } }
+
+              const merged = Object.assign({}, DEFAULTS, cur)
+              if (cfg.apiUrl) merged.apiUrl = cfg.apiUrl
+              if (cfg.apiKey) merged.apiKey = cfg.apiKey
+              if (cfg.model) merged.model = cfg.model
+              if (cfg.asrUrl) merged.asrUrl = cfg.asrUrl
+              if (cfg.asrKey) merged.asrKey = cfg.asrKey
+              if (cfg.ttsUrl) merged.ttsUrl = cfg.ttsUrl
+              if (cfg.quickAsks && cfg.quickAsks.length) merged.quickAsks = cfg.quickAsks
+
+              storage.set({
+                key: 'aiConfig',
+                value: JSON.stringify(merged),
+                success: () => {
+                  console.log('[wristAI] ✅ 配置已保存')
+                  try {
+                    prompt.showToast({ message: '已从手机同步配置', duration: 2500 })
+                  } catch (e) {}
+                  try {
+                    require('@system.vibrator').start(80)
+                  } catch (e) {}
+                },
+                fail: () => console.log('[wristAI] ❌ 保存失败')
+              })
+            },
+            fail: () => console.log('[wristAI] ❌ 读不到旧配置')
+          })
+        } catch (e) {
+          console.log('[wristAI] 处理消息出错: ' + e)
+        }
+      }
+
+      console.log('[wristAI] interconnect 监听已就绪')
+    } catch (e) {
+      console.log('[wristAI] interconnect 初始化失败: ' + e)
+    }
+  },
+
   onDestroy() {
-    console.log('app destroyed')
+    console.log('[wristAI] app destroyed')
   }
 }
 </script>

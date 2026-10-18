@@ -46,6 +46,24 @@
 | 小米 Watch S4 / S4 Sport | — | ⚠️ 未测试 |
 | 小米手环 9 Pro | — | ⚠️ 未测试（手环可能无网络能力） |
 
+## 📱 手机设置器（v3.0.0 新增）
+
+手表上打字填 API 密钥基本没法用。配套的安卓 App 让你在手机上填，一键推到手表。
+
+**下载**：`release/android/wrist-ai-configurator.apk`
+
+工作方式：
+
+```
+手机 App  ──interconnect──>  手表快应用
+  填表单         官方通道        自动写入 storage
+  （同包名 com.wrist.ai.chat + 同签名）
+```
+
+装好后：手机打开 App → 自动列出已连接手表 → 填配置 → 点「发送到手表」→ 手表弹出「已从手机同步配置」。
+
+> 小米的 interconnect 要求 App 与快应用的**包名和签名都一致**，本仓库两者都用同一张证书（`CN=wrist-ai-quickapp`）。
+
 ## 安装
 
 ### 1. 装 AstroBox
@@ -54,7 +72,7 @@
 
 ### 2. 侧载应用
 
-从 [Releases](https://github.com/6ewjso6-gif/wrist-ai/releases) 下载 `wrist-ai-v2.1.0-S5.rpk` → 传到手机 → AstroBox → 本地安装 → 选择该文件。
+从 [Releases](https://github.com/6ewjso6-gif/wrist-ai/releases) 下载 `wrist-ai-v3.0.0-S5.rpk` → 传到手机 → AstroBox → 本地安装 → 选择该文件。
 
 > 本地侧载不看 AstroBox 资源库里的设备代号（`o65`/`o65m` 那套是给在线分发用的）。
 
