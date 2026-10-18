@@ -1,0 +1,87 @@
+<template>
+  <div class="page">
+    <div class="bar">
+      <text class="nav" @click="back">返回</text>
+      <text class="title">语音</text>
+      <text class="nav-green" @click="save">保存</text>
+    </div>
+
+    <scroll class="body" scroll-y="true">
+      <text class="sec">语音识别</text>
+      <text class="lb">接口地址</text>
+      <input class="inp" type="text" value="{{cfg.asrUrl}}" @change="onAsrUrl" />
+      <text class="lb">密钥</text>
+      <input class="inp" type="text" value="{{cfg.asrKey}}" placeholder="sk-..." @change="onAsrKey" />
+
+      <text class="sec">朗读</text>
+      <text class="lb">URL 模板（{text} 会被替换）</text>
+      <input class="inp" type="text" value="{{cfg.ttsUrl}}" @change="onTtsUrl" />
+
+      <div class="presets">
+        <text class="pill" @click="youdao">有道 免费</text>
+        <text class="pill-test" @click="test">试听</text>
+      </div>
+
+      <text class="st">{{status}}</text>
+    </scroll>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import prompt from '@system.prompt'
+import { loadConfig, saveConfig } from '../../common/config.js'
+import { speakText } from '../../common/api.js'
+
+export default {
+  private: { cfg: { asrUrl: '', asrKey: '', ttsUrl: '' }, status: '' },
+  onInit() { loadConfig().then((c) => { this.cfg = c }) },
+  onAsrUrl(e) { this.cfg.asrUrl = e.value },
+  onAsrKey(e) { this.cfg.asrKey = e.value },
+  onTtsUrl(e) { this.cfg.ttsUrl = e.value },
+  youdao() {
+    this.cfg.ttsUrl = 'https://dict.youdao.com/dictvoice?type=2&audio={text}'
+    this.status = '已填有道（免费）'
+  },
+  test() {
+    this.status = '合成中…'
+    speakText(this.cfg, '你好我是腕上AI')
+      .then(() => { this.status = '正在播放' })
+      .catch((e) => { this.status = '失败：' + String(e).slice(0, 50) })
+  },
+  save() {
+    saveConfig(this.cfg).then((ok) => {
+      this.status = ok ? '已保存' : '保存失败'
+      prompt.showToast({ message: ok ? '已保存' : '失败', duration: 1000 })
+      if (ok) setTimeout(() => router.back(), 500)
+    })
+  },
+  back() { router.back() }
+}
+</script>
+
+<style>
+.page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
+.bar {
+  flex-direction: row; justify-content: space-between; align-items: center;
+  height: 64px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
+}
+.title { color: #62d0ff; font-size: 28px; font-weight: bold; }
+.nav { color: #c9d6e2; font-size: 22px; width: 80px; }
+.nav-green { color: #ffffff; background-color: #238636; font-size: 20px;
+  width: 84px; height: 46px; line-height: 46px; text-align: center; border-radius: 23px; }
+
+.body { flex: 1; flex-direction: column; padding: 4px 56px 16px 56px; }
+.sec { color: #62d0ff; font-size: 22px; font-weight: bold; margin-top: 12px; }
+.lb { color: #8a94a0; font-size: 18px; margin-top: 8px; margin-bottom: 4px; }
+.inp { height: 54px; background-color: #1c2128; border-radius: 27px;
+  color: #e6edf3; font-size: 18px; padding-left: 18px; padding-right: 18px; }
+.presets { flex-direction: row; justify-content: center; margin-top: 14px; }
+.pill { background-color: #1f6feb; color: #ffffff; font-size: 18px;
+  height: 48px; line-height: 48px; text-align: center; border-radius: 24px;
+  width: 130px; margin: 0 5px; }
+.pill-test { background-color: #238636; color: #ffffff; font-size: 18px;
+  height: 48px; line-height: 48px; text-align: center; border-radius: 24px;
+  width: 96px; margin: 0 5px; }
+.st { color: #d29922; font-size: 18px; margin-top: 12px; text-align: center; }
+</style>

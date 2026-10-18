@@ -1,0 +1,62 @@
+<template>
+  <div class="page">
+    <div class="bar">
+      <text class="nav" @click="back">返回</text>
+      <text class="title">快捷提问</text>
+      <text class="nav-green" @click="save">保存</text>
+    </div>
+
+    <scroll class="body" scroll-y="true">
+      <text class="lb">问题一</text>
+      <input class="inp" type="text" value="{{cfg.quickAsks[0]}}" @change="onQ1" />
+      <text class="lb">问题二</text>
+      <input class="inp" type="text" value="{{cfg.quickAsks[1]}}" @change="onQ2" />
+      <text class="lb">问题三</text>
+      <input class="inp" type="text" value="{{cfg.quickAsks[2]}}" @change="onQ3" />
+      <text class="lb">问题四</text>
+      <input class="inp" type="text" value="{{cfg.quickAsks[3]}}" @change="onQ4" />
+      <text class="st">{{status}}</text>
+    </scroll>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import prompt from '@system.prompt'
+import { loadConfig, saveConfig } from '../../common/config.js'
+
+export default {
+  private: { cfg: { quickAsks: ['', '', '', ''] }, status: '' },
+  onInit() { loadConfig().then((c) => { this.cfg = c }) },
+  onQ1(e) { this.cfg.quickAsks[0] = e.value },
+  onQ2(e) { this.cfg.quickAsks[1] = e.value },
+  onQ3(e) { this.cfg.quickAsks[2] = e.value },
+  onQ4(e) { this.cfg.quickAsks[3] = e.value },
+  save() {
+    saveConfig(this.cfg).then((ok) => {
+      this.status = ok ? '已保存' : '保存失败'
+      prompt.showToast({ message: ok ? '已保存' : '失败', duration: 1000 })
+      if (ok) setTimeout(() => router.back(), 500)
+    })
+  },
+  back() { router.back() }
+}
+</script>
+
+<style>
+.page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
+.bar {
+  flex-direction: row; justify-content: space-between; align-items: center;
+  height: 64px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
+}
+.title { color: #62d0ff; font-size: 28px; font-weight: bold; }
+.nav { color: #c9d6e2; font-size: 22px; width: 80px; }
+.nav-green { color: #ffffff; background-color: #238636; font-size: 20px;
+  width: 84px; height: 46px; line-height: 46px; text-align: center; border-radius: 23px; }
+
+.body { flex: 1; flex-direction: column; padding: 6px 56px; }
+.lb { color: #8a94a0; font-size: 18px; margin-top: 8px; margin-bottom: 3px; }
+.inp { height: 46px; background-color: #1c2128; border-radius: 25px;
+  color: #e6edf3; font-size: 18px; padding-left: 16px; padding-right: 16px; }
+.st { color: #d29922; font-size: 18px; margin-top: 10px; text-align: center; }
+</style>

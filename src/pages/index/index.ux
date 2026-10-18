@@ -165,7 +165,7 @@ export default {
 /* 顶栏：高 64，按钮 64x64 */
 .bar {
   flex-direction: row; justify-content: center; align-items: center;
-  height: 64px; padding-left: 48px; padding-right: 48px; margin-top: 4px;
+  height: 64px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
 }
 .persona {
   color: #0b0f14; background-color: #62d0ff;

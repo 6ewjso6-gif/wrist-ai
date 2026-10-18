@@ -128,7 +128,7 @@ export default {
 
 .bar {
   flex-direction: row; justify-content: space-between; align-items: center;
-  height: 72px; padding-left: 40px; padding-right: 40px; margin-top: 6px;
+  height: 72px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
 }
 .bar-title { color: #62d0ff; font-size: 30px; font-weight: bold; }
 .bar-btn {
@@ -142,7 +142,7 @@ export default {
   text-align: center; border-radius: 28px;
 }
 
-.body { flex: 1; flex-direction: column; padding: 8px 40px 24px 40px; }
+.body { flex: 1; flex-direction: column; padding: 4px 56px 16px 56px; }
 
 .item {
   flex-direction: row; align-items: center;

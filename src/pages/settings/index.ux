@@ -1,132 +1,52 @@
 <template>
   <div class="page">
     <div class="bar">
-      <text class="bar-btn" @click="back">返回</text>
-      <text class="bar-title">设置</text>
-      <text class="bar-btn-green" @click="save">保存</text>
+      <text class="back" @click="back">返回</text>
+      <text class="title">设置</text>
+      <text class="spacer"></text>
     </div>
 
-    <scroll class="body" scroll-y="true">
+    <div class="menu">
+      <div class="row" @click="go('/pages/set_chat')">
+        <text class="row-t">对话模型</text>
+        <text class="row-s">{{chatState}}</text>
+      </div>
+      <div class="row" @click="go('/pages/set_voice')">
+        <text class="row-t">语音</text>
+        <text class="row-s">{{voiceState}}</text>
+      </div>
+      <div class="row" @click="go('/pages/set_quick')">
+        <text class="row-t">快捷提问</text>
+        <text class="row-s">{{quickCount}} 条</text>
+      </div>
+      <div class="row" @click="go('/pages/diag')">
+        <text class="row-t">自检</text>
+        <text class="row-s">检查各项能力</text>
+      </div>
+    </div>
 
-      <text class="sec">对话模型</text>
-      <text class="label">地址</text>
-      <input class="inp" type="text" value="{{cfg.apiUrl}}" placeholder="https://..." @change="onUrl" />
-      <text class="label">密钥</text>
-      <input class="inp" type="text" value="{{cfg.apiKey}}" placeholder="sk-..." @change="onKey" />
-      <text class="label">模型</text>
-      <input class="inp" type="text" value="{{cfg.model}}" placeholder="deepseek-chat" @change="onModel" />
-      <text class="pill" @click="presetDeepseek">用 DeepSeek</text>
-      <text class="pill" @click="presetQwen">用通义</text>
-      <text class="pill" @click="presetKimi">用 Kimi</text>
-
-      <text class="sec">风格</text>
-      <text class="pill-blue" @click="cyclePrompt">{{promptName}} · 点切换</text>
-
-      <text class="sec">语音识别</text>
-      <text class="label">地址</text>
-      <input class="inp" type="text" value="{{cfg.asrUrl}}" placeholder="https://.../audio/transcriptions" @change="onAsrUrl" />
-      <text class="label">密钥</text>
-      <input class="inp" type="text" value="{{cfg.asrKey}}" placeholder="sk-..." @change="onAsrKey" />
-
-      <text class="sec">朗读</text>
-      <text class="label">模板地址（{text} 会被替换）</text>
-      <input class="inp tall" type="text" value="{{cfg.ttsUrl}}" placeholder="https://dict.youdao.com/dictvoice?type=2&audio={text}" @change="onTtsUrl" />
-      <text class="pill" @click="presetYoudao">有道 免费</text>
-      <text class="pill-green" @click="testTts">试听一句话</text>
-
-      <text class="sec">快捷提问</text>
-      <input class="inp" type="text" value="{{cfg.quickAsks[0]}}" placeholder="问题一" @change="onQ1" />
-      <input class="inp" type="text" value="{{cfg.quickAsks[1]}}" placeholder="问题二" @change="onQ2" />
-      <input class="inp" type="text" value="{{cfg.quickAsks[2]}}" placeholder="问题三" @change="onQ3" />
-      <input class="inp" type="text" value="{{cfg.quickAsks[3]}}" placeholder="问题四" @change="onQ4" />
-
-      <text class="hint">{{status}}</text>
-    </scroll>
+    <text class="tip">日常同步推荐用手机 App，手表上不用打字</text>
   </div>
 </template>
 
 <script>
 import router from '@system.router'
-import prompt from '@system.prompt'
-import { loadConfig, saveConfig, getPromptSets } from '../../common/config.js'
-import { speakText } from '../../common/api.js'
+import { loadConfig } from '../../common/config.js'
 
 export default {
-  private: {
-    cfg: {
-      apiUrl: '', apiKey: '', model: '', customPrompt: '', promptSetId: 'short',
-      asrUrl: '', asrKey: '', asrModel: '',
-      ttsUrl: '', ttsKey: '',
-      quickAsks: ['', '', '', '']
-    },
-    promptName: '极简',
-    status: ''
-  },
+  private: { chatState: '', voiceState: '', quickCount: 0 },
 
-  onInit() { loadConfig().then((c) => { this.cfg = c; this.syncName() }) },
-
-  syncName() {
-    const sets = getPromptSets()
-    const s = sets.filter((x) => x.id === this.cfg.promptSetId)[0]
-    this.promptName = this.cfg.customPrompt ? '自定义' : (s ? s.name : '极简')
-  },
-
-  onUrl(e) { this.cfg.apiUrl = e.value },
-  onKey(e) { this.cfg.apiKey = e.value },
-  onModel(e) { this.cfg.model = e.value },
-  onAsrUrl(e) { this.cfg.asrUrl = e.value },
-  onAsrKey(e) { this.cfg.asrKey = e.value },
-  onTtsUrl(e) { this.cfg.ttsUrl = e.value },
-  onQ1(e) { this.cfg.quickAsks[0] = e.value },
-  onQ2(e) { this.cfg.quickAsks[1] = e.value },
-  onQ3(e) { this.cfg.quickAsks[2] = e.value },
-  onQ4(e) { this.cfg.quickAsks[3] = e.value },
-
-  presetDeepseek() {
-    this.cfg.apiUrl = 'https://api.deepseek.com/chat/completions'
-    this.cfg.model = 'deepseek-chat'
-    this.status = '已填 DeepSeek'
-  },
-  presetQwen() {
-    this.cfg.apiUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
-    this.cfg.model = 'qwen-plus'
-    this.status = '已填通义'
-  },
-  presetKimi() {
-    this.cfg.apiUrl = 'https://api.moonshot.cn/v1/chat/completions'
-    this.cfg.model = 'moonshot-v1-8k'
-    this.status = '已填 Kimi'
-  },
-  presetYoudao() {
-    this.cfg.ttsUrl = 'https://dict.youdao.com/dictvoice?type=2&audio={text}'
-    this.status = '已填有道'
-  },
-
-  testTts() {
-    this.status = '试听中…'
-    speakText(this.cfg, '你好，我是腕上AI')
-      .then(() => { this.status = '正在播放' })
-      .catch((e) => { this.status = '失败：' + String(e).slice(0, 70) })
-  },
-
-  cyclePrompt() {
-    const sets = getPromptSets()
-    let i = 0
-    for (let k = 0; k < sets.length; k++) if (sets[k].id === this.cfg.promptSetId) i = k
-    i = (i + 1) % sets.length
-    this.cfg.promptSetId = sets[i].id
-    this.syncName()
-    this.status = '风格：' + this.promptName
-  },
-
-  save() {
-    saveConfig(this.cfg).then((ok) => {
-      this.status = ok ? '已保存' : '保存失败'
-      prompt.showToast({ message: ok ? '已保存' : '失败', duration: 1000 })
-      if (ok) setTimeout(() => router.back(), 500)
+  onShow() {
+    loadConfig().then((c) => {
+      this.chatState = c.apiKey ? (c.model || '已配置') : '未配置'
+      const asr = c.asrKey ? '识别✓' : '识别✗'
+      const tts = c.ttsUrl ? '朗读✓' : '朗读✗'
+      this.voiceState = asr + ' ' + tts
+      this.quickCount = (c.quickAsks || []).length
     })
   },
 
+  go(uri) { router.push({ uri: uri }) },
   back() { router.back() }
 }
 </script>
@@ -136,48 +56,20 @@ export default {
 
 .bar {
   flex-direction: row; justify-content: space-between; align-items: center;
-  height: 72px; padding-left: 40px; padding-right: 40px; margin-top: 6px;
+  height: 64px; padding-left: 76px; padding-right: 76px; margin-top: 40px;
 }
-.bar-title { color: #62d0ff; font-size: 30px; font-weight: bold; }
-.bar-btn {
-  color: #c9d6e2; background-color: #30363d;
-  font-size: 24px; width: 92px; height: 56px; line-height: 56px;
-  text-align: center; border-radius: 28px;
-}
-.bar-btn-green {
-  color: #ffffff; background-color: #238636;
-  font-size: 24px; width: 92px; height: 56px; line-height: 56px;
-  text-align: center; border-radius: 28px;
-}
+.title { color: #62d0ff; font-size: 28px; font-weight: bold; }
+.back { color: #c9d6e2; font-size: 22px; width: 80px; }
+.spacer { width: 80px; }
 
-.body { flex: 1; flex-direction: column; padding: 8px 36px 30px 36px; }
+.menu { flex: 1; flex-direction: column; padding: 10px 56px; }
+.row {
+  flex-direction: column; justify-content: center;
+  height: 76px; background-color: #1c2128;
+  border-radius: 20px; margin-bottom: 12px; padding-left: 22px;
+}
+.row-t { color: #e6edf3; font-size: 24px; }
+.row-s { color: #8a94a0; font-size: 18px; margin-top: 2px; }
 
-.sec {
-  color: #62d0ff; font-size: 28px; font-weight: bold;
-  margin-top: 26px; margin-bottom: 10px;
-}
-.label { color: #8a94a0; font-size: 23px; margin-top: 12px; margin-bottom: 6px; }
-.inp {
-  height: 64px; background-color: #1c2128; border-radius: 32px;
-  color: #e6edf3; font-size: 23px; padding-left: 20px; padding-right: 20px;
-  margin-bottom: 8px;
-}
-.tall { height: 96px; border-radius: 20px; }
-
-.pill {
-  background-color: #1f6feb; color: #ffffff;
-  font-size: 24px; height: 60px; line-height: 60px;
-  text-align: center; border-radius: 30px; margin-top: 10px;
-}
-.pill-blue {
-  background-color: #1f6feb; color: #ffffff;
-  font-size: 26px; height: 68px; line-height: 68px;
-  text-align: center; border-radius: 34px; margin-top: 8px;
-}
-.pill-green {
-  background-color: #238636; color: #ffffff;
-  font-size: 26px; height: 72px; line-height: 72px;
-  text-align: center; border-radius: 36px; margin-top: 14px;
-}
-.hint { color: #d29922; font-size: 23px; line-height: 30px; margin-top: 18px; }
+.tip { color: #8a94a0; font-size: 18px; text-align: center; padding: 0 50px 16px 50px; }
 </style>
