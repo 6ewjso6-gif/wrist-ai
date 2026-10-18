@@ -1,6 +1,9 @@
 package com.wrist.ai.chat;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
@@ -56,6 +59,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         setContentView(buildUi());
+        askPerms();
         refreshNodes();
     }
 
@@ -228,9 +232,58 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
     }
 
+    // ================= 权限 =================
+    private void askPerms() {
+        if (Build.VERSION.SDK_INT < 31) return;
+        String[] need = { "android.permission.BLUETOOTH_CONNECT", "android.permission.BLUETOOTH_SCAN" };
+        java.util.ArrayList<String> miss = new java.util.ArrayList<String>();
+        for (int i = 0; i < need.length; i++) {
+            if (checkSelfPermission(need[i]) != PackageManager.PERMISSION_GRANTED) miss.add(need[i]);
+        }
+        if (!miss.isEmpty()) {
+            requestPermissions(miss.toArray(new String[0]), 100);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(code, perms, res);
+        refreshNodes();
+    }
+
+    // ===== 环境自检 =====
+    private String envReport() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("系统: Android ").append(Build.VERSION.RELEASE)
+          .append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
+
+        boolean mi = isInstalled("com.xiaomi.wearable");
+        boolean mh = isInstalled("com.mi.health");
+        sb.append("小米运动健康: ").append(mi ? "已安装" : "未安装");
+        if (!mi && mh) sb.append("（找到 com.mi.health）");
+        sb.append("\n");
+
+        if (Build.VERSION.SDK_INT >= 31) {
+            boolean c = checkSelfPermission("android.permission.BLUETOOTH_CONNECT") == PackageManager.PERMISSION_GRANTED;
+            sb.append("蓝牙权限: ").append(c ? "已授予" : "未授予");
+        } else {
+            sb.append("蓝牙权限: 无需申请");
+        }
+        return sb.toString();
+    }
+
+    private boolean isInstalled(String pkg) {
+        try {
+            getPackageManager().getPackageInfo(pkg, 0);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     // ================= 查找手表 =================
     private void refreshNodes() {
-        nodesView.setText("正在查找手表…");
+        nodesView.setText("正在查找手表…\n\n" + envReport());
         nodeId = null;
         try {
             Wearable.getNodeApi(this).getConnectedNodes()
@@ -243,7 +296,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     void onNodes(List nodes) {
         if (nodes == null || nodes.isEmpty()) {
-            nodesView.setText("未找到已连接的手表\n\n请确认：\n1. 手表与这台手机已蓝牙配对\n2. 手表上已安装「腕上AI」快应用\n3. 小米运动健康 App 在后台运行");
+            nodesView.setText("未找到已连接的手表\n\n" + envReport() + "\n请依次确认：\n1. 手表与手机已蓝牙配对\n2. 手表上已装「腕上AI」并【打开着】\n3. 小米运动健康在后台且已连手表\n4. 已授予蓝牙权限");
             nodeId = null;
             return;
         }

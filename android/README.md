@@ -40,7 +40,23 @@ apksigner sign --ks wristai.p12 --ks-key-alias wristai \
   --out app.apk aligned.apk
 ```
 
-### 两个坑（已踩过）
+### 三个坑（已踩过）
+
+**0. 必须手动合并 aar 的 `<queries>`**
+手工 aapt 打包没有 Gradle 的 manifest 合并。SDK 的 aar 里带了：
+
+```xml
+<queries>
+    <package android:name="com.xiaomi.wearable" />
+    <package android:name="com.mi.health" />
+</queries>
+```
+
+Android 11+ 有包可见性限制，不声明就**绑定不到小米运动健康的服务**，
+表现为「连不上」。必须手工抄进自己的 AndroidManifest.xml。
+
+另外 `BLUETOOTH_CONNECT` / `BLUETOOTH_SCAN` 是 API 31 才有的常量，
+用 API 30 的 android.jar 编译时要写字符串字面量。
 
 1. **d8 8.2.2 会在匿名内部类和泛型接口实现上 NPE**
    - `EnclosingMethod: #x.#0`（匿名类）→ d8 崩
