@@ -1,28 +1,40 @@
 <template>
   <div class="page">
-    <!-- 顶部状态 -->
+    <!-- 顶部 -->
     <div class="bar">
-      <text class="bar-title">腕上AI</text>
+      <text class="persona" @click="cyclePrompt">{{promptName}}</text>
       <text class="bar-btn" @click="goSettings">⚙</text>
       <text class="bar-btn" @click="clearChat">✕</text>
     </div>
 
-    <!-- 消息列表 -->
+    <!-- 消息 -->
     <scroll class="msgs" scroll-y="true" id="msgScroll">
+      <!-- 空态：显示快捷提问 -->
+      <div class="chips" if="{{messages.length === 0}}">
+        <text class="chips-title">试试这样问</text>
+        <div class="chip" for="{{quickAsks}}" @click="askQuick($item)">
+          <text class="chip-text">{{$item}}</text>
+        </div>
+      </div>
+
       <div class="msg" for="{{messages}}">
-        <div class="{{ $item.role === 'user' ? 'bubble-user' : 'bubble-ai' }}">
+        <div class="{{ $item.role === 'user' ? 'bubble-user' : 'bubble-ai' }}"
+             @longpress="readAloud($item)">
           <text class="bubble-text">{{ $item.content }}</text>
         </div>
       </div>
+
       <div class="msg" if="{{loading}}">
-        <div class="bubble-ai"><text class="bubble-text">思考中…</text></div>
+        <div class="bubble-ai"><text class="bubble-text">{{loadingText}}</text></div>
       </div>
+
       <div class="tip" if="{{hint}}"><text class="tip-text">{{hint}}</text></div>
     </scroll>
 
-    <!-- 输入区 -->
+    <!-- 输入 -->
     <div class="inputbar">
-      <input class="inp" type="text" value="{{draft}}" placeholder="问点什么…" @change="onDraft" />
+      <text class="mic {{recording ? 'mic-on' : ''}}" @click="tapMic">{{recording ? '■' : '🎤'}}</text>
+      <input class="inp" type="text" value="{{draft}}" placeholder="{{recording ? '正在听…' : '问点什么…'}}" @change="onDraft" />
       <text class="send {{sending ? 'send-off' : ''}}" @click="send">发送</text>
     </div>
   </div>
@@ -30,8 +42,9 @@
 
 <script>
 import router from '@system.router'
-import { loadConfig } from '../../common/config.js'
-import { askAI } from '../../common/api.js'
+import prompt from '@system.prompt'
+import { loadConfig, saveConfig, getPromptSets, QUICK_ASKS } from '../../common/config.js'
+import { askAI, recordVoice, stopVoice, transcribe, speakText, stopSpeak, buzz } from '../../common/api.js'
 
 export default {
   private: {
@@ -39,33 +52,106 @@ export default {
     draft: '',
     loading: false,
     sending: false,
+    recording: false,
+    loadingText: '思考中…',
     hint: '',
+    promptName: '极简',
+    quickAsks: QUICK_ASKS,
     cfg: null
   },
 
   onInit() {
-    console.log('### wristAI onInit')
-    loadConfig().then((c) => {
-      this.cfg = c
-      if (!c.apiKey) this.hint = '还没配置密钥，点右上角 ⚙ 去设置'
-      else this.hint = ''
-    })
+    loadConfig().then((c) => this.applyCfg(c))
   },
 
   onShow() {
-    // 从设置页回来时刷新配置
-    if (this.cfg === null) return
-    loadConfig().then((c) => {
-      this.cfg = c
-      this.hint = c.apiKey ? '' : '还没配置密钥，点右上角 ⚙ 去设置'
-    })
+    loadConfig().then((c) => this.applyCfg(c))
   },
 
+  applyCfg(c) {
+    this.cfg = c
+    this.quickAsks = (c.quickAsks && c.quickAsks.length) ? c.quickAsks : QUICK_ASKS
+    const sets = getPromptSets()
+    const s = sets.filter((x) => x.id === c.promptSetId)[0]
+    this.promptName = c.customPrompt ? '自定义' : (s ? s.name : '极简')
+    if (!c.apiKey) this.hint = '还没配置密钥，点 ⚙ 去设置'
+    else this.hint = ''
+  },
+
+  /* ---- 提示词切换 ---- */
+  cyclePrompt() {
+    const sets = getPromptSets()
+    let i = 0
+    for (let k = 0; k < sets.length; k++) if (sets[k].id === this.cfg.promptSetId) i = k
+    i = (i + 1) % sets.length
+    this.cfg.promptSetId = sets[i].id
+    this.cfg.customPrompt = ''
+    this.promptName = sets[i].name
+    this.hint = '已切到「' + sets[i].name + '」'
+    buzz(true)
+    saveConfig(this.cfg)
+  },
+
+  /* ---- 快捷提问 ---- */
+  askQuick(q) {
+    this.draft = q
+    this.send()
+  },
+
+  /* ---- 语音输入 ---- */
+  tapMic() {
+    if (this.recording) {
+      stopVoice()
+      this.recording = false
+      return
+    }
+    if (!this.cfg || !this.cfg.asrKey) {
+      this.hint = '语音识别还没配密钥，去设置里填'
+      return
+    }
+    stopSpeak()
+    this.recording = true
+    this.hint = '说话… 8 秒后自动结束'
+    buzz(true)
+
+    recordVoice(8000)
+      .then((uri) => {
+        this.recording = false
+        this.loading = true
+        this.loadingText = '识别中…'
+        return transcribe(this.cfg, uri)
+      })
+      .then((text) => {
+        this.loading = false
+        this.draft = text
+        this.hint = '识别完成，可编辑后发送'
+        buzz(false)
+      })
+      .catch((err) => {
+        this.recording = false
+        this.loading = false
+        this.hint = String(err).slice(0, 100)
+      })
+  },
+
+  /* ---- 长按朗读 ---- */
+  readAloud(item) {
+    if (!item || item.role !== 'assistant') return
+    if (!this.cfg || !this.cfg.ttsUrl) {
+      this.hint = '朗读需要先配 TTS 接口（见设置页）'
+      return
+    }
+    buzz(true)
+    this.hint = '正在合成语音…'
+    speakText(this.cfg, item.content)
+      .then(() => { this.hint = '播放中，再长按可停' })
+      .catch((err) => { this.hint = String(err).slice(0, 100) })
+  },
+
+  /* ---- 聊天 ---- */
   onDraft(e) { this.draft = e.value },
-
   goSettings() { router.push({ uri: '/pages/settings' }) },
-
-  clearChat() { this.messages = []; this.hint = '' },
+  clearChat() { this.messages = []; this.hint = ''; stopSpeak() },
 
   send() {
     const text = (this.draft || '').trim()
@@ -73,19 +159,23 @@ export default {
     if (this.sending) return
     if (!this.cfg || !this.cfg.apiKey) { this.hint = '请先去设置 API 密钥'; return }
 
+    stopSpeak()
     this.hint = ''
     this.sending = true
     this.loading = true
+    this.loadingText = '思考中…'
     this.messages = this.messages.concat([{ role: 'user', content: text }])
     this.draft = ''
 
-    // 只带上最近 6 轮，省 token
-    const history = this.messages.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-6)
+    const history = this.messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .slice(-6)
 
     askAI(this.cfg, history).then((reply) => {
       this.messages = this.messages.concat([{ role: 'assistant', content: reply }])
       this.loading = false
       this.sending = false
+      buzz(true)
       this.scrollBottom()
     }).catch((err) => {
       this.hint = String(err).slice(0, 120)
@@ -104,71 +194,60 @@ export default {
 </script>
 
 <style>
-.page {
-  flex-direction: column;
-  width: 100%; height: 100%;
-  background-color: #000000;
-}
+.page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
+
 .bar {
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  height: 44px;
-  padding-left: 70px;
-  padding-right: 70px;
-  background-color: transparent;
+  flex-direction: row; justify-content: center; align-items: center;
+  height: 44px; padding-left: 64px; padding-right: 64px;
 }
-.bar-title { color: #62d0ff; font-size: 22px; font-weight: bold; }
-.bar-btn { color: #8a94a0; font-size: 24px; margin-left: 18px; }
+.persona {
+  color: #0b0f14; background-color: #62d0ff;
+  font-size: 20px; padding: 4px 16px; border-radius: 14px;
+}
+.bar-btn { color: #8a94a0; font-size: 24px; margin-left: 16px; }
 
 .msgs { flex: 1; flex-direction: column; padding: 6px 34px; }
+
+.chips { flex-direction: column; padding: 4px 0; }
+.chips-title { color: #8a94a0; font-size: 18px; margin-bottom: 8px; text-align: center; }
+.chip {
+  background-color: #1c2128; border-radius: 14px;
+  padding: 8px 12px; margin-bottom: 8px;
+}
+.chip-text { color: #a9b6c4; font-size: 18px; }
+
 .msg { flex-direction: column; margin-bottom: 10px; }
 .bubble-user {
-  align-self: flex-end;
-  background-color: #1f6feb;
-  border-radius: 12px;
-  padding: 8px 12px;
-  max-width: 300px;
+  align-self: flex-end; background-color: #1f6feb;
+  border-radius: 12px; padding: 8px 12px; max-width: 300px;
 }
 .bubble-ai {
-  align-self: flex-start;
-  background-color: #1c2128;
-  border-radius: 12px;
-  padding: 8px 12px;
-  max-width: 320px;
+  align-self: flex-start; background-color: #1c2128;
+  border-radius: 12px; padding: 8px 12px; max-width: 320px;
 }
-.bubble-text { color: #e6edf3; font-size: 24px; line-height: 30px; }
+.bubble-text { color: #e6edf3; font-size: 22px; line-height: 29px; }
 
-.tip { padding: 6px 4px; }
-.tip-text { color: #d29922; font-size: 20px; }
+.tip { padding: 4px; }
+.tip-text { color: #d29922; font-size: 18px; }
 
 .inputbar {
-  flex-direction: row;
-  align-items: center;
-  height: 56px;
-  padding-left: 62px;
-  padding-right: 62px;
-  background-color: transparent;
+  flex-direction: row; align-items: center;
+  height: 58px; padding-left: 40px; padding-right: 40px;
 }
+.mic {
+  width: 44px; height: 42px; border-radius: 21px;
+  background-color: #1c2128; color: #8a94a0;
+  font-size: 20px; text-align: center; margin-right: 6px;
+}
+.mic-on { background-color: #b62324; color: #ffffff; }
 .inp {
-  flex: 1;
-  height: 42px;
-  background-color: #1c2128;
-  border-radius: 21px;
-  color: #e6edf3;
-  font-size: 20px;
-  padding-left: 14px;
-  padding-right: 14px;
+  flex: 1; height: 42px; background-color: #1c2128; border-radius: 21px;
+  color: #e6edf3; font-size: 20px; padding-left: 12px; padding-right: 12px;
 }
 .send {
-  width: 68px;
-  height: 42px;
-  margin-left: 8px;
-  background-color: #238636;
-  border-radius: 21px;
-  color: #ffffff;
-  font-size: 20px;
-  text-align: center;
+  width: 64px; height: 42px; margin-left: 6px;
+  background-color: #238636; border-radius: 21px;
+  color: #ffffff; font-size: 20px; text-align: center;
 }
 .send-off { background-color: #30363d; color: #8a94a0; }
 </style>

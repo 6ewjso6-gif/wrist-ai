@@ -10,12 +10,15 @@
 
 ## 特性
 
+- 🎤 **语音输入** —— 表上录音，直传 Whisper 兼容接口转文字（S5 是唯一支持 `@system.record` 的小米手表）
+- 🔊 **长按朗读** —— 长按 AI 回复，调 TTS 接口合成语音播放
+- ⚡ **快捷提问** —— 空聊天时显示预设问题，点一下直接问
+- 🎭 **多套提示词** —— 极简 / 闲聊 / 翻译 / 润色 / 代码 / 学习，点顶部标签一键切换
 - 📱 **纯手表端运行** —— 不依赖手机 App
-- 🔌 **任意 OpenAI 兼容接口** —— 改地址和模型名即可
+- 🔌 **任意 OpenAI 兼容接口** —— DeepSeek / 通义 / Kimi / Ollama
 - ⚙️ **表上直接配置** —— 不用改代码重新打包
 - 🎯 **圆屏适配** —— 480×480 圆形 AMOLED 安全区布局
 - 💬 **多轮上下文** —— 自动带最近 6 轮
-- 🎨 **回答极简** —— 系统提示词限制 60 字，适配小屏
 
 ## 支持的设备
 
@@ -34,7 +37,7 @@
 
 ### 2. 侧载应用
 
-把 `dist/腕上AI-v1.0.1-S5.rpk` 传到手机 → AstroBox → 本地安装 → 选择该文件。
+把 `dist/腕上AI-v1.1.0-S5.rpk` 传到手机 → AstroBox → 本地安装 → 选择该文件。
 
 > 本地侧载不看 AstroBox 资源库里的设备代号（`o65`/`o65m` 那套是给在线分发用的）。
 
@@ -48,6 +51,18 @@
 | 通义千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions` | `qwen-plus` |
 | Kimi | `https://api.moonshot.cn/v1/chat/completions` | `moonshot-v1-8k` |
 | 本地 Ollama | `http://<你的IP>:11434/v1/chat/completions` | 你自己拉的模型 |
+
+### 4. 语音功能（可选）
+
+语音输入和朗读都需要额外配接口，不配也不影响文字聊天。
+
+| 能力 | 推荐接口 | 说明 |
+|---|---|---|
+| 语音识别 | `https://api.openai.com/v1/audio/transcriptions` | 模型 `whisper-1`，也支持 Groq / 硅基流动等 Whisper 兼容服务 |
+| 朗读 TTS | `https://api.openai.com/v1/audio/speech` | 模型 `tts-1`，音色 `alloy` / `nova` / `shimmer` |
+
+> 注意：Vela 快应用**没有内置的语音识别和 TTS API**，必须走云端接口。
+> 录音/上传/播放这三个底层能力只有 **Xiaomi Watch S5** 全部支持，其他机型请自测。
 
 ## 自己构建
 
