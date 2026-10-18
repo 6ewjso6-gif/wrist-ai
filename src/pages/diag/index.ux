@@ -1,21 +1,21 @@
 <template>
   <div class="page">
     <div class="bar">
-      <text class="bar-btn" @click="back">←</text>
+      <text class="bar-btn" @click="back">返回</text>
       <text class="bar-title">自检</text>
-      <text class="bar-btn" @click="runAll">重测</text>
+      <text class="bar-btn-green" @click="runAll">重测</text>
     </div>
 
     <scroll class="body" scroll-y="true">
       <div class="item" for="{{checks}}">
-        <text class="{{ $item.ok ? 'st-ok' : 'st-bad' }}">{{ $item.ok ? '●' : '●' }}</text>
+        <div class="{{ $item.ok ? 'dot-ok' : 'dot-bad' }}"></div>
         <div class="item-body">
           <text class="item-name">{{ $item.name }}</text>
           <text class="item-msg">{{ $item.msg }}</text>
         </div>
       </div>
 
-      <text class="hint" if="{{done}}">全部检查完毕，把这一页截图发给开发者即可</text>
+      <text class="hint">把这一页截图发给开发者即可</text>
     </scroll>
   </div>
 </template>
@@ -26,22 +26,12 @@ import router from '@system.router'
 function mk(name) { return { name: name, ok: false, msg: '待检测' } }
 
 export default {
-  private: {
-    checks: [],
-    done: false
-  },
+  private: { checks: [] },
 
   onInit() {
     this.checks = [
-      mk('录音 record'),
-      mk('上传 uploadtask'),
-      mk('音频播放 audio'),
-      mk('下载 request'),
-      mk('振动 vibrator'),
-      mk('数据存储 storage'),
-      mk('网络状态'),
-      mk('对话接口'),
-      mk('朗读接口')
+      mk('录音'), mk('上传'), mk('播放'), mk('下载'),
+      mk('振动'), mk('存储'), mk('网络'), mk('对话'), mk('朗读')
     ]
     this.runAll()
   },
@@ -53,108 +43,80 @@ export default {
   },
 
   runAll() {
-    this.done = false
-    this.checkFeatures()
-    this.checkNetwork()
-    this.checkChat()
-    this.checkTts()
-  },
-
-  checkFeatures() {
-    const tries = [
-      ['@system.record', 0],
-      ['@system.uploadtask', 1],
-      ['@system.audio', 2],
-      ['@system.request', 3],
-      ['@system.vibrator', 4],
-      ['@system.storage', 5]
+    const mods = [
+      ['@system.record', 0], ['@system.uploadtask', 1], ['@system.audio', 2],
+      ['@system.request', 3], ['@system.vibrator', 4], ['@system.storage', 5]
     ]
-    for (let k = 0; k < tries.length; k++) {
-      const mod = tries[k][0]
-      const idx = tries[k][1]
+    for (let k = 0; k < mods.length; k++) {
       try {
-        const m = require(mod)
-        this.set(idx, !!m, m ? '可用' : '模块为空')
+        const m = require(mods[k][0])
+        this.set(mods[k][1], !!m, m ? '可用' : '模块为空')
       } catch (e) {
-        this.set(idx, false, '不可用：' + (e && e.message ? e.message : e))
+        this.set(mods[k][1], false, '不可用')
       }
     }
+    this.checkNet()
+    this.loadCfg((cfg) => { this.checkChat(cfg); this.checkTts(cfg) })
   },
 
-  checkNetwork() {
+  checkNet() {
     try {
-      const net = require('@system.network')
-      net.getType({
-        success: (res) => {
-          const t = res && res.type ? res.type : 'unknown'
-          this.set(6, t !== 'none', '连接类型：' + t)
+      require('@system.network').getType({
+        success: (r) => {
+          const t = r && r.type ? r.type : '未知'
+          this.set(6, t !== 'none', '类型：' + t)
         },
-        fail: (e, c) => this.set(6, false, '查询失败(' + c + ')')
+        fail: () => this.set(6, false, '查询失败')
       })
-    } catch (e) {
-      this.set(6, false, '接口不可用')
-    }
+    } catch (e) { this.set(6, false, '接口不可用') }
   },
 
-  checkChat() {
-    let cfg
-    try { require('@system.storage').get({ key: 'aiConfig', success: (r) => {
-      cfg = r && r.data ? JSON.parse(r.data) : null
-      this.doChatTest(cfg)
-    }, fail: () => this.set(7, false, '读不到配置') }) }
-    catch (e) { this.set(7, false, '读不到配置') }
+  loadCfg(cb) {
+    try {
+      require('@system.storage').get({
+        key: 'aiConfig',
+        success: (r) => { try { cb(r && r.data ? JSON.parse(r.data) : null) } catch (e) { cb(null) } },
+        fail: () => cb(null)
+      })
+    } catch (e) { cb(null) }
   },
 
-  doChatTest(cfg) {
-    if (!cfg || !cfg.apiKey) { this.set(7, false, '没填 API 密钥'); return }
+  checkChat(cfg) {
+    if (!cfg || !cfg.apiKey) { this.set(7, false, '没填密钥'); return }
     this.set(7, false, '请求中…')
-    const fetch = require('@system.fetch')
-    fetch.fetch({
-      url: cfg.apiUrl,
-      method: 'POST',
-      header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
-      data: JSON.stringify({
-        model: cfg.model,
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5
-      }),
-      responseType: 'json',
-      success: (res) => {
-        let d = res.data
-        if (typeof d === 'string') { try { d = JSON.parse(d) } catch (e) {} }
-        if (d && d.choices) this.set(7, true, '正常，模型 ' + (d.model || cfg.model))
-        else if (d && d.error) this.set(7, false, 'API 报错：' + (d.error.message || '').slice(0, 60))
-        else this.set(7, false, '响应异常：' + JSON.stringify(d).slice(0, 60))
-      },
-      fail: (e, c) => this.set(7, false, '网络错误 ' + c)
-    })
+    try {
+      require('@system.fetch').fetch({
+        url: cfg.apiUrl, method: 'POST',
+        header: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.apiKey },
+        data: JSON.stringify({ model: cfg.model, messages: [{ role: 'user', content: 'ping' }], max_tokens: 5 }),
+        responseType: 'json',
+        success: (res) => {
+          let d = res.data
+          if (typeof d === 'string') { try { d = JSON.parse(d) } catch (e) {} }
+          if (d && d.choices) this.set(7, true, '正常')
+          else if (d && d.error) this.set(7, false, '报错：' + String(d.error.message || '').slice(0, 40))
+          else this.set(7, false, '响应异常')
+        },
+        fail: (e, c) => this.set(7, false, '网络错误 ' + c)
+      })
+    } catch (e) { this.set(7, false, '调用失败') }
   },
 
-  checkTts() {
-    let cfg
-    try { require('@system.storage').get({ key: 'aiConfig', success: (r) => {
-      cfg = r && r.data ? JSON.parse(r.data) : null
-      this.doTtsTest(cfg)
-    }, fail: () => this.set(8, false, '读不到配置') }) }
-    catch (e) { this.set(8, false, '读不到配置') }
-  },
-
-  doTtsTest(cfg) {
+  checkTts(cfg) {
     const url = (cfg && cfg.ttsUrl) ? cfg.ttsUrl : 'https://dict.youdao.com/dictvoice?type=2&audio={text}'
-    if (url.indexOf('{text}') < 0) { this.set(8, false, '模板里缺 {text}'); return }
+    if (url.indexOf('{text}') < 0) { this.set(8, false, '模板缺 {text}'); return }
     this.set(8, false, '请求中…')
-    const finalUrl = url.replace(/\{text\}/g, encodeURIComponent('测试'))
-    const fetch = require('@system.fetch')
-    fetch.fetch({
-      url: finalUrl,
-      method: 'GET',
-      responseType: 'json',
-      success: (res) => {
-        const len = res.data ? String(res.data).length : 0
-        this.set(8, true, '接口可达（返回 ' + len + ' 字节）')
-      },
-      fail: (e, c) => this.set(8, false, '不可达(' + c + ')，检查地址或网络')
-    })
+    try {
+      require('@system.fetch').fetch({
+        url: url.replace(/\{text\}/g, encodeURIComponent('测试')),
+        method: 'GET', responseType: 'json',
+        success: (res) => {
+          const len = res.data ? String(res.data).length : 0
+          this.set(8, true, '可达，' + len + ' 字节')
+        },
+        fail: (e, c) => this.set(8, false, '不可达 ' + c)
+      })
+    } catch (e) { this.set(8, false, '调用失败') }
   },
 
   back() { router.back() }
@@ -163,24 +125,40 @@ export default {
 
 <style>
 .page { flex-direction: column; width: 100%; height: 100%; background-color: #000000; }
+
 .bar {
   flex-direction: row; justify-content: space-between; align-items: center;
-  height: 44px; padding-left: 64px; padding-right: 64px;
+  height: 72px; padding-left: 40px; padding-right: 40px; margin-top: 6px;
 }
-.bar-title { color: #62d0ff; font-size: 22px; font-weight: bold; }
-.bar-btn { color: #62d0ff; font-size: 22px; }
+.bar-title { color: #62d0ff; font-size: 30px; font-weight: bold; }
+.bar-btn {
+  color: #c9d6e2; background-color: #30363d;
+  font-size: 24px; width: 92px; height: 56px; line-height: 56px;
+  text-align: center; border-radius: 28px;
+}
+.bar-btn-green {
+  color: #ffffff; background-color: #238636;
+  font-size: 24px; width: 92px; height: 56px; line-height: 56px;
+  text-align: center; border-radius: 28px;
+}
 
-.body { flex: 1; flex-direction: column; padding: 4px 44px 20px 44px; }
+.body { flex: 1; flex-direction: column; padding: 8px 40px 24px 40px; }
 
 .item {
-  flex-direction: row; align-items: flex-start;
-  margin-bottom: 10px;
+  flex-direction: row; align-items: center;
+  margin-bottom: 16px;
 }
-.st-ok { color: #3fb950; font-size: 20px; margin-right: 8px; }
-.st-bad { color: #f85149; font-size: 20px; margin-right: 8px; }
+.dot-ok {
+  width: 22px; height: 22px; border-radius: 11px;
+  background-color: #3fb950; margin-right: 14px;
+}
+.dot-bad {
+  width: 22px; height: 22px; border-radius: 11px;
+  background-color: #f85149; margin-right: 14px;
+}
 .item-body { flex-direction: column; flex: 1; }
-.item-name { color: #e6edf3; font-size: 19px; }
-.item-msg { color: #8a94a0; font-size: 16px; }
+.item-name { color: #e6edf3; font-size: 27px; }
+.item-msg { color: #8a94a0; font-size: 21px; margin-top: 2px; }
 
-.hint { color: #d29922; font-size: 17px; margin-top: 16px; }
+.hint { color: #d29922; font-size: 22px; line-height: 28px; margin-top: 20px; }
 </style>
